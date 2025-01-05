@@ -43,7 +43,7 @@ This project is a bot that generates Stripe payment links for your products or s
 ### Whitelisted users
 To allow only whitelisted users, the `ONLY_WHITELISTED` environment variable must be set to `1`, and the Telegram user ID must be listed in `config/whitelist.csv`. If `ONLY_WHITELISTED` is set to `0`, the whitelist will have no effect.
 
-### Blaclisted users
+### Blacklisted users
 This list will always be checked before each user action. Add the user ID to `config/blacklist.csv` to block it from any further usage. No prior configuration is required.
 
 ## Usage

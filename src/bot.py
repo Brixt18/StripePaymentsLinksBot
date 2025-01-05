@@ -1,5 +1,6 @@
 import logging
 import re
+from os import getenv
 
 import stripe
 from dotenv import find_dotenv, load_dotenv
@@ -8,14 +9,15 @@ from telegram._callbackquery import CallbackQuery
 from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 
-from helpers.helpers import get_existing_prices, get_existing_products
 from helpers.user_validator import UserValidator
 from models.enums import HandleButtonsCommands, HandleMessagesCommands
+from stripe_sdk import StripeSDK
 
 load_dotenv(find_dotenv())
 
 logging.basicConfig(level=logging.INFO)
 
+stripe_sdk = StripeSDK(getenv("STRIPE_API_KEY"))
 user_validator = UserValidator()
 
 
@@ -26,15 +28,15 @@ class CreateButtons:
         Creates an inline keyboard with all available products for the user to select.
         """
         await context.bot.send_chat_action(update.effective_chat.id, ChatAction.TYPING)
-        products = get_existing_products()
+        products = stripe_sdk.get_existing_products()
         logging.debug(f"{products=}", extra={"chat_id": update.effective_chat.id,
                       "user_id": update.effective_user.id, "function": "CreateButtons.list_products"})
 
         keyboard = [
             [
                 InlineKeyboardButton(
-                    f"{product['name']}",
-                    callback_data=f"select_product:{product['id']}"
+                    f"{product.name}",
+                    callback_data=f"select_product:{product.id}"
                 )
             ]
             for product in products
@@ -44,30 +46,6 @@ class CreateButtons:
 
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text("Choose a product:", reply_markup=reply_markup)
-
-    @staticmethod
-    async def create_price(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """
-        Handles the creation of a price selection menu for generating a new payment link.
-
-        Args:
-            update (Update): The incoming update from the user.
-            context (ContextTypes.DEFAULT_TYPE): The context for the current conversation.
-        Returns:
-            None: This function sends a message with an inline keyboard to the user.
-        """
-        prices = get_existing_prices()
-
-        keyboard = [
-            [
-                InlineKeyboardButton(f"${price['value']} ({price['currency'].upper()}, {
-                                     price['type'].replace('_', ' ')})", callback_data=f"create_price_link:{price['id']}")
-            ]
-            for price in prices
-        ]
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("Choose an existing price for creating a new payment link:", reply_markup=reply_markup)
 
 
 class HandleCommands:
@@ -197,9 +175,9 @@ class HandleMessages:
             # If the price already exists, retrieve the price ID, otherwise create a new price.
             price_id = next(
                 (
-                    price['id']
-                    for price in get_existing_prices(product_id)
-                    if price['value'] == price
+                    price.id
+                    for price in stripe_sdk.get_existing_prices(product_id)
+                    if price.unit_amount == price
                 ),
                 None
             )

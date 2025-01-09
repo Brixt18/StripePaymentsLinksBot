@@ -8,7 +8,6 @@ from conts import PATH
 class UserValidator:
     def __init__(self):
         self._path = PATH
-        print(self._path)
 
         self.whitelisted_users = self._get_whitelisted_users()
         logging.debug(f"Whitelisted users: {self.whitelisted_users}", extra={
